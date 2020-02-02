@@ -18,7 +18,11 @@ struct MsgC { /*CTORS(MsgC)*/ };
 struct MsgD { /*CTORS(MsgD)*/ };
 struct MsgE { /*CTORS(MsgE)*/ };
 
-using Bus = MessageBroker<MsgA, MsgB, MsgC, MsgD, MsgE>;
+struct RunProcess { const std::string command; };
+
+using RunProcessRequest = Request<RunProcess, std::string>;
+
+using Bus = BusImpl<MsgA, MsgB, MsgC, MsgD, MsgE, RunProcessRequest>;
 
 void print(std::string msg) {
     const bool printMe = false;
@@ -95,7 +99,6 @@ struct Listener3 {
         bus.subscribe<MsgC>(std::bind(&Listener3::onMsgC, &*this, std::placeholders::_1));
         bus.subscribe<MsgD>([](const MsgD &) { print("Listener3 received MsgD"); });
         bus.subscribe<MsgE>([](const MsgE &) { print("Listener3 received MsgE"); });
-
     }
 
     void subscribeSelf(BusRuntime&bus) {
@@ -106,8 +109,33 @@ struct Listener3 {
     }
 };
 
-struct ProcessRunner {
+struct ProcessRunnerClient {
 
+    Bus &bus;
+
+    void onMsgA(const MsgA &) {
+        print("ProcessRunnerClient received MsgA, going to send request for process");
+        bus.sendMessage(RunProcessRequest{RunProcess{"ls -la"}, std::bind(&ProcessRunnerClient::onProcessReady, &*this, std::placeholders::_1)});
+    }
+
+    void onProcessReady(std::string &&result) {
+        print("Received result: '" + result + "'");
+    }
+
+    void subscribeSelf(Bus &bus) {
+        bus.subscribe<MsgA>(std::bind(&ProcessRunnerClient::onMsgA, &*this, std::placeholders::_1));
+    }
+};
+
+struct ProcessRunner {
+    void onProcessRequest(const RunProcessRequest &request) {
+        std::cout << request.m.command << std::endl;
+        request.f("-rwxr-xr-x 1 tomas tomas 110K  2. úno 22.56 bus");
+    }
+
+    void subscribeSelf(Bus &bus) {
+        bus.subscribe<RunProcessRequest>(std::bind(&ProcessRunner::onProcessRequest, &*this, std::placeholders::_1));
+    }
 };
 
 template <typename F>
@@ -168,8 +196,24 @@ void measure(const int iterations = 5000) {
     }, iterations);
 }
 
+void demo() {
+    Bus bus;
+    Listener1 l1;
+    ProcessRunner p;
+    ProcessRunnerClient pc{bus};
+
+    bus.subscribeAll(l1, p, pc);
+
+    bus.sendMessage(MsgA());
+    std::cout << "--------------------------------\n";
+    //bus.sendMessage(MsgB());
+
+    while (bus.processMessage());
+}
+
 int main() {
 
+    demo();
     measure();
 
     return 0;

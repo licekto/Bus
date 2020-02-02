@@ -5,8 +5,14 @@
 #include <deque>
 #include <variant>
 
+template <typename Message, typename Result>
+struct Request {
+    const Message m;
+    const std::function<void(Result &&)> f;
+};
+
 template<typename ...Messages>
-class MessageBroker {
+class BusImpl {
 
     template<typename Message>
     using CallbackT = std::function<void(const Message &)>;
@@ -30,8 +36,7 @@ class MessageBroker {
     std::deque<MessagesVariant> queue;
 
     template<typename...>
-    struct typelist {
-    };
+    struct typelist {};
 
     template <typename MessageT>
     bool callIfMatches(const MessagesVariant &message) {
@@ -61,8 +66,16 @@ class MessageBroker {
     }
 
 public:
+
+    BusImpl() = default;
+
     template<typename ...Subscribers>
-    constexpr MessageBroker(Subscribers& ...subscribers) {
+    constexpr BusImpl(Subscribers& ...subscribers) {
+        subscribe(subscribers...);
+    }
+
+    template<typename ...Subscribers>
+    constexpr void subscribeAll(Subscribers& ...subscribers) {
         subscribe(subscribers...);
     }
 
@@ -85,10 +98,5 @@ public:
         callCallbacks(message, typelist<Messages...>());
 
         return true;
-    }
-
-    template <typename Requestor, typename Provider>
-    void subscribeRequestTo() {
-
     }
 };
