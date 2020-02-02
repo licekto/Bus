@@ -28,20 +28,20 @@ class BusRuntime {
     std::deque<std::function<void()>> queue;
 
     template<typename Head, typename ...Tail>
-    void subscribe(Head head, Tail ...tail) {
+    void subscribe(Head& head, Tail& ...tail) {
         subscribe(head);
         subscribe(tail...);
     }
 
     template<typename Head>
-    void subscribe(Head head) {
+    void subscribe(Head& head) {
         head.subscribeSelf(*this);
     }
 
 public:
     template<typename ...Subscribers>
-    constexpr BusRuntime(Subscribers&& ...subscribers) {
-        subscribe(std::forward<Subscribers>(subscribers)...);
+    constexpr BusRuntime(Subscribers& ...subscribers) {
+        subscribe(subscribers...);
     }
 
     template<typename Message>
@@ -78,7 +78,7 @@ public:
         if (queue.empty()) {
             return false;
         }
-        auto msg = queue.front();
+        auto msg = std::move(queue.front());
         queue.pop_front();
         msg();
 

@@ -1,0 +1,8 @@
+bin/*
+generated*
+build/*
+*.swp
+*.user
+*.autosave
+*.vs
+test/unittest/Generated/*

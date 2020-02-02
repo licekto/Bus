@@ -1,137 +1,176 @@
 #include <iostream>
 #include <chrono>
+#include <cassert>
 
-#include "Bus.hpp"
 #include "BusRuntime.hpp"
+#include "MessageBroker.hpp"
 
-struct MsgA {};
-struct MsgB {};
-struct MsgC {};
-struct MsgD {};
-struct MsgE {};
+#define CTORS(Name) \
+    Name() {std::cout << "Default " << #Name << std::endl; }\
+    Name(const Name&) { std::cout << "Copy " << #Name << std::endl; } \
+    Name(Name&&) { std::cout << "Move " << #Name << std::endl; } \
+    Name& operator=(const Name&) { std::cout << "operator& " << #Name << std::endl; return *this; } \
+    Name& operator=(Name&&) { std::cout << "operator&& " << #Name << std::endl; return *this; }
 
-using Bus = BusImpl<MsgA, MsgB, MsgC, MsgD, MsgE>;
+struct MsgA { /*CTORS(MsgA)*/ std::string test = "abcd"; };
+struct MsgB { /*CTORS(MsgB)*/ };
+struct MsgC { /*CTORS(MsgC)*/ };
+struct MsgD { /*CTORS(MsgD)*/ };
+struct MsgE { /*CTORS(MsgE)*/ };
+
+using Bus = MessageBroker<MsgA, MsgB, MsgC, MsgD, MsgE>;
+
+void print(std::string msg) {
+    const bool printMe = false;
+    if (printMe) {
+        std::cout << msg << std::endl;
+    }
+}
 
 struct Listener1 {
-    void onMsgA(const MsgA &) {
-        //std::cout << "Listener1 received MsgA" << std::endl;
+    CTORS(Listener1)
+    void onMsgA(const MsgA &m) {
+        assert(m.test[1] == 'b');
+        print("Listener1 received MsgA");
     }
 
     void onMsgB(const MsgB &) {
-        //std::cout << "Listener1 received MsgB" << std::endl;
+        print("Listener1 received MsgB");
     }
 
     void onMsgD(const MsgD &) {
-        //std::cout << "Listener1 received MsgD" << std::endl;
+        print("Listener1 received MsgD");
     }
 
     void subscribeSelf(Bus &bus) {
-        bus.subscribe<MsgA>(std::bind(&Listener1::onMsgA, *this, std::placeholders::_1));
-        bus.subscribe<MsgB>(std::bind(&Listener1::onMsgB, *this, std::placeholders::_1));
-        bus.subscribe<MsgC>([](const MsgC &) { /*std::cout << "Listener1 received MsgC" << std::endl;*/ });
-        bus.subscribe<MsgD>(std::bind(&Listener1::onMsgD, *this, std::placeholders::_1));
-        bus.subscribe<MsgE>([](const MsgE &) { /*std::cout << "Listener1 received MsgE" << std::endl;*/ });
+        bus.subscribe<MsgA>(std::bind(&Listener1::onMsgA, &*this, std::placeholders::_1));
+        bus.subscribe<MsgB>(std::bind(&Listener1::onMsgB, &*this, std::placeholders::_1));
+        bus.subscribe<MsgC>([](const MsgC &) { print("Listener1 received MsgC"); });
+        bus.subscribe<MsgD>(std::bind(&Listener1::onMsgD, &*this, std::placeholders::_1));
+        bus.subscribe<MsgE>([](const MsgE &) { print("Listener1 received MsgE"); });
     }
 
     void subscribeSelf(BusRuntime &bus) {
-        bus.subscribe<MsgA>(std::bind(&Listener1::onMsgA, *this, std::placeholders::_1));
-        bus.subscribe<MsgB>(std::bind(&Listener1::onMsgB, *this, std::placeholders::_1));
-        bus.subscribe<MsgC>([](const MsgC &) { /*std::cout << "Listener1 received MsgC" << std::endl;*/ });
-        bus.subscribe<MsgD>(std::bind(&Listener1::onMsgD, *this, std::placeholders::_1));
-        bus.subscribe<MsgE>([](const MsgE &) { /*std::cout << "Listener1 received MsgE" << std::endl;*/ });
+        bus.subscribe<MsgA>(std::bind(&Listener1::onMsgA, &*this, std::placeholders::_1));
+        bus.subscribe<MsgB>(std::bind(&Listener1::onMsgB, &*this, std::placeholders::_1));
+        bus.subscribe<MsgC>([](const MsgC &) { print("Listener1 received MsgC"); });
+        bus.subscribe<MsgD>(std::bind(&Listener1::onMsgD, &*this, std::placeholders::_1));
+        bus.subscribe<MsgE>([](const MsgE &) { print("Listener1 received MsgE"); });
     }
 };
 
 struct Listener2 {
+    CTORS(Listener2)
     void onMsgB(const MsgB &) {
-        //std::cout << "Listener2 received MsgB" << std::endl;
+        print("Listener2 received MsgB");
     }
 
     void onMsgC(const MsgC &) {
-        //std::cout << "Listener2 received MsgC" << std::endl;
+        print("Listener2 received MsgC");
     }
 
     void subscribeSelf(Bus &bus) {
-        bus.subscribe<MsgB>(std::bind(&Listener2::onMsgB, *this, std::placeholders::_1));
-        bus.subscribe<MsgC>(std::bind(&Listener2::onMsgC, *this, std::placeholders::_1));
+        bus.subscribe<MsgB>(std::bind(&Listener2::onMsgB, &*this, std::placeholders::_1));
+        bus.subscribe<MsgC>(std::bind(&Listener2::onMsgC, &*this, std::placeholders::_1));
     }
 
     void subscribeSelf(BusRuntime&bus) {
-        bus.subscribe<MsgB>(std::bind(&Listener2::onMsgB, *this, std::placeholders::_1));
-        bus.subscribe<MsgC>(std::bind(&Listener2::onMsgC, *this, std::placeholders::_1));
+        bus.subscribe<MsgB>(std::bind(&Listener2::onMsgB, &*this, std::placeholders::_1));
+        bus.subscribe<MsgC>(std::bind(&Listener2::onMsgC, &*this, std::placeholders::_1));
     }
 };
 
 struct Listener3 {
+    CTORS(Listener3)
     void onMsgB(const MsgB &) {
-        //std::cout << "Listener2 received MsgB" << std::endl;
+        print("Listener2 received MsgB");
     }
 
     void onMsgC(const MsgC &) {
-        //std::cout << "Listener2 received MsgC" << std::endl;
+        print("Listener2 received MsgC");
     }
 
     void subscribeSelf(Bus &bus) {
-        bus.subscribe<MsgB>(std::bind(&Listener3::onMsgB, *this, std::placeholders::_1));
-        bus.subscribe<MsgC>(std::bind(&Listener3::onMsgC, *this, std::placeholders::_1));
-        bus.subscribe<MsgD>([](const MsgD &) { /*std::cout << "Listener3 received MsgD" << std::endl;*/ });
-        bus.subscribe<MsgE>([](const MsgE &) { /*std::cout << "Listener3 received MsgE" << std::endl;*/ });
+        bus.subscribe<MsgB>(std::bind(&Listener3::onMsgB, &*this, std::placeholders::_1));
+        bus.subscribe<MsgC>(std::bind(&Listener3::onMsgC, &*this, std::placeholders::_1));
+        bus.subscribe<MsgD>([](const MsgD &) { print("Listener3 received MsgD"); });
+        bus.subscribe<MsgE>([](const MsgE &) { print("Listener3 received MsgE"); });
 
     }
 
     void subscribeSelf(BusRuntime&bus) {
-        bus.subscribe<MsgB>(std::bind(&Listener3::onMsgB, *this, std::placeholders::_1));
-        bus.subscribe<MsgC>(std::bind(&Listener3::onMsgC, *this, std::placeholders::_1));
-        bus.subscribe<MsgD>([](const MsgD &) { /*std::cout << "Listener3 received MsgD" << std::endl;*/ });
-        bus.subscribe<MsgE>([](const MsgE &) { /*std::cout << "Listener3 received MsgE" << std::endl;*/ });
+        bus.subscribe<MsgB>(std::bind(&Listener3::onMsgB, &*this, std::placeholders::_1));
+        bus.subscribe<MsgC>(std::bind(&Listener3::onMsgC, &*this, std::placeholders::_1));
+        bus.subscribe<MsgD>([](const MsgD &) { print("Listener3 received MsgD"); });
+        bus.subscribe<MsgE>([](const MsgE &) { print("Listener3 received MsgE"); });
     }
 };
 
+struct ProcessRunner {
+
+};
+
 template <typename F>
-void measureTime(F &&f) {
-    auto now = std::chrono::system_clock::now();
+void measureTime(F &&f, const int iterations = 5000) {
 
-    f();
+    int64_t sum = 0;
+    for (int i = 0; i < iterations; ++i) {
+        auto now = std::chrono::system_clock::now();
+        f();
+        auto then = std::chrono::system_clock::now();
+        auto duration = then - now;
+        sum += std::chrono::duration_cast<std::chrono::microseconds>(duration).count();
+    }
+    sum /= iterations;
+    std::cout << sum << "us\n";
+}
 
-    auto then = std::chrono::system_clock::now();
-    auto duration = then - now;
-    std::cout << std::chrono::duration_cast<std::chrono::microseconds>(duration).count() << "us\n";
+template <typename BusT>
+void processing(BusT &&bus, const int iterations = 500) {
+
+    for (int i = 0; i < iterations; ++i) {
+        bus.sendMessage(MsgA());
+        bus.sendMessage(MsgB());
+        bus.sendMessage(MsgA());
+        bus.sendMessage(MsgC());
+        bus.sendMessage(MsgC());
+        bus.sendMessage(MsgD());
+        bus.sendMessage(MsgA());
+        bus.sendMessage(MsgD());
+        bus.sendMessage(MsgD());
+        bus.sendMessage(MsgE());
+        bus.sendMessage(MsgA());
+        bus.sendMessage(MsgC());
+        bus.sendMessage(MsgD());
+        bus.sendMessage(MsgE());
+        bus.sendMessage(MsgD());
+        bus.sendMessage(MsgC());
+        bus.sendMessage(MsgA());
+    }
+
+    while (bus.processMessage());
+}
+
+void measure(const int iterations = 5000) {
+    Listener1 l1;
+    Listener2 l2;
+    Listener3 l3;
+
+    Bus b1(l1, l2, l3);
+    BusRuntime b2(l1, l2, l3);
+
+    measureTime([&]() {
+        processing(b1, iterations/10);
+    }, iterations);
+    print("-----------------------------------");
+    measureTime([&]() {
+        processing(b2, iterations/10);
+    }, iterations);
 }
 
 int main() {
-    Listener1 l1;
-    Listener2 l2;
-    Listener2 l3;
 
-    measureTime([&]() {
-        Bus bus(l1, l2, l3);
-
-        bus.sendMessage(MsgA());
-        bus.sendMessage(MsgB());
-        bus.sendMessage(MsgA());
-        bus.sendMessage(MsgC());
-        bus.sendMessage(MsgC());
-        bus.sendMessage(MsgB());
-        bus.sendMessage(MsgB());
-
-        while (bus.processMessage());
-    });
-
-    //std::cout << "----------------------------------\n";
-    measureTime([&]() {
-        BusRuntime bus(l1, l2, l3);
-
-        bus.sendMessage(MsgA());
-
-        bus.sendMessage(MsgB());
-        bus.sendMessage(MsgA());
-        bus.sendMessage(MsgC());
-        bus.sendMessage(MsgC());
-        bus.sendMessage(MsgB());
-        bus.sendMessage(MsgB());
-
-        while (bus.processMessage());
-    });
+    measure();
 
     return 0;
 }
