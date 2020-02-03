@@ -2,8 +2,8 @@
 #include <chrono>
 #include <cassert>
 
+#include "Bus.hpp"
 #include "BusRuntime.hpp"
-#include "MessageBroker.hpp"
 
 #define CTORS(Name) \
     Name() {std::cout << "Default " << #Name << std::endl; }\
@@ -127,14 +127,10 @@ struct ProcessRunnerClient {
     }
 };
 
-struct ProcessRunner {
-    void onProcessRequest(const RunProcessRequest &request) {
-        std::cout << request.m.command << std::endl;
-        request.f("-rwxr-xr-x 1 tomas tomas 110K  2. úno 22.56 bus");
-    }
-
-    void subscribeSelf(Bus &bus) {
-        bus.subscribe<RunProcessRequest>(std::bind(&ProcessRunner::onProcessRequest, &*this, std::placeholders::_1));
+class ProcessRunner : public BaseRequestor<Bus, RunProcess, std::string> {
+    std::string action(const RunProcess &message) override {
+        std::cout << message.command << std::endl;
+        return "-rwxr-xr-x 1 tomas tomas 110K  2. úno 22.56 bus";
     }
 };
 
@@ -188,11 +184,11 @@ void measure(const int iterations = 5000) {
     BusRuntime b2(l1, l2, l3);
 
     measureTime([&]() {
-        processing(b1, iterations/10);
+        processing(b1, iterations < 10 ? 1 : iterations/10);
     }, iterations);
     print("-----------------------------------");
     measureTime([&]() {
-        processing(b2, iterations/10);
+        processing(b2, iterations < 10 ? 1 : iterations/10);
     }, iterations);
 }
 
@@ -206,7 +202,6 @@ void demo() {
 
     bus.sendMessage(MsgA());
     std::cout << "--------------------------------\n";
-    //bus.sendMessage(MsgB());
 
     while (bus.processMessage());
 }
