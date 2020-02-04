@@ -22,6 +22,8 @@ g++ -pedantic -Wall -Wextra -O3 main.cpp
 
 ## Measurement
 
+Example results...
+
 ```
 Compile-time bus: 718us
 Run-time bus: 1284us
