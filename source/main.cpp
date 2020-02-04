@@ -5,6 +5,8 @@
 #include "Bus.hpp"
 #include "BusRuntime.hpp"
 
+// Helpers
+//------------------------------------------------------------------------------------------------------
 #define CTORS(Name) \
     Name() {std::cout << "Default " << #Name << std::endl; }\
     Name(const Name&) { std::cout << "Copy " << #Name << std::endl; } \
@@ -12,25 +14,31 @@
     Name& operator=(const Name&) { std::cout << "operator& " << #Name << std::endl; return *this; } \
     Name& operator=(Name&&) { std::cout << "operator&& " << #Name << std::endl; return *this; }
 
-struct MsgA { /*CTORS(MsgA)*/ std::string test = "abcd"; };
-struct MsgB { /*CTORS(MsgB)*/ };
-struct MsgC { /*CTORS(MsgC)*/ };
-struct MsgD { /*CTORS(MsgD)*/ };
-struct MsgE { /*CTORS(MsgE)*/ };
-
-struct RunProcess { const std::string command; };
-
-using RunProcessRequest = Request<RunProcess, std::string>;
-
-using Bus = BusImpl<MsgA, MsgB, MsgC, MsgD, MsgE, RunProcessRequest>;
-
 void print(std::string msg) {
     const bool printMe = false;
     if (printMe) {
         std::cout << msg << std::endl;
     }
 }
-
+//------------------------------------------------------------------------------------------------------
+// Messages definition
+//------------------------------------------------------------------------------------------------------
+struct MsgA { /*CTORS(MsgA)*/ std::string test = "abcd"; };
+struct MsgB { /*CTORS(MsgB)*/ };
+struct MsgC { /*CTORS(MsgC)*/ };
+struct MsgD { /*CTORS(MsgD)*/ };
+struct MsgE { /*CTORS(MsgE)*/ };
+struct RunProcess { const std::string command; };
+using RunProcessRequest = Request<RunProcess, std::string>;
+//------------------------------------------------------------------------------------------------------
+// Bus definition
+//------------------------------------------------------------------------------------------------------
+using Bus = BusImpl<MsgA, MsgB, MsgC, MsgD, MsgE, RunProcessRequest>;
+//------------------------------------------------------------------------------------------------------
+// Communicating components
+// 1) General listeners: Listener1, Listener2, Listener3
+// 2) ProcessRunner and ProcessRunnerClient: demonstration of a request
+//------------------------------------------------------------------------------------------------------
 struct Listener1 {
     CTORS(Listener1)
     void onMsgA(const MsgA &m) {
@@ -133,7 +141,9 @@ class ProcessRunner : public BaseRequestor<Bus, RunProcess, std::string> {
         return "-rwxr-xr-x 1 tomas tomas 110K  2. úno 22.56 bus";
     }
 };
-
+//------------------------------------------------------------------------------------------------------
+// Time measurement
+//------------------------------------------------------------------------------------------------------
 template <typename F>
 void measureTime(F &&f, const int iterations = 5000) {
 
@@ -148,7 +158,9 @@ void measureTime(F &&f, const int iterations = 5000) {
     sum /= iterations;
     std::cout << sum << "us\n";
 }
-
+//------------------------------------------------------------------------------------------------------
+// Some random message processing
+//------------------------------------------------------------------------------------------------------
 template <typename BusT>
 void processing(BusT &&bus, const int iterations = 500) {
 
@@ -174,7 +186,9 @@ void processing(BusT &&bus, const int iterations = 500) {
 
     while (bus.processMessage());
 }
-
+//------------------------------------------------------------------------------------------------------
+// Functions building and running buses and launching processing
+//------------------------------------------------------------------------------------------------------
 void measure(const int iterations = 5000) {
     Listener1 l1;
     Listener2 l2;
@@ -183,10 +197,12 @@ void measure(const int iterations = 5000) {
     Bus b1(l1, l2, l3);
     BusRuntime b2(l1, l2, l3);
 
+    std::cout << "Compile-time bus: ";
     measureTime([&]() {
         processing(b1, iterations < 10 ? 1 : iterations/10);
     }, iterations);
     print("-----------------------------------");
+    std::cout << "Run-time bus: ";
     measureTime([&]() {
         processing(b2, iterations < 10 ? 1 : iterations/10);
     }, iterations);
@@ -201,11 +217,10 @@ void demo() {
     bus.subscribeAll(l1, p, pc);
 
     bus.sendMessage(MsgA());
-    std::cout << "--------------------------------\n";
 
     while (bus.processMessage());
 }
-
+//------------------------------------------------------------------------------------------------------
 int main() {
 
     demo();

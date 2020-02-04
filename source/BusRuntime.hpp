@@ -46,8 +46,7 @@ public:
 
     template<typename Message>
     void subscribe(std::function<void(const Message&)> &&function) {
-        //subscribers.emplace({getType<Message>(), function});
-        decltype(std::begin(subscribers)) it = std::end(subscribers);
+        auto it = std::end(subscribers);
         if (auto iit = subscribers.find(getType<Message>()); iit == std::end(subscribers)) {
             it = subscribers.emplace(getType<Message>(), std::make_any<Subscriber<Message>>()).first;
         }

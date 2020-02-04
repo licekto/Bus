@@ -48,26 +48,26 @@ class BusImpl {
     template<typename...>
     struct typelist {};
 
-    /// Calls 
-    template <typename MessageT>
+    /// Calls subscribed callbacks if the message type matches.
+    template <typename Message>
     bool callIfMatches(const MessagesVariant &message) {
-        if (std::holds_alternative<MessageT>(message)) {
-            auto &currentSubscribers = std::get<Subscribers<MessageT>>(subscribers);
+        if (std::holds_alternative<Message>(message)) {
+            auto &currentSubscribers = std::get<Subscribers<Message>>(subscribers);
             for (auto callback : currentSubscribers) {
-                callback(std::get<MessageT>(message));
+                callback(std::get<Message>(message));
             }
             return true;
         }
         return false;
     }
 
+    /// Variadic functions to iterate through all the message types and find and call particular subscribers.
     template<typename Head, typename ...Tail>
     void callCallbacks(const MessagesVariant &message, typelist<Head, Tail...>) {
         if (!callIfMatches<Head>(message)) {
             callCallbacks(message, typelist<Tail...>());
         }
     }
-
     template<typename Head>
     void callCallbacks(const MessagesVariant &message, typelist<Head>) {
         if (!callIfMatches<Head>(message)) {
@@ -79,27 +79,29 @@ class BusImpl {
 public:
 
     BusImpl() = default;
-
+    /// Allows subscription of arbitrary number of subscribers.
+    /// It is expected that subscribers implement the function subscribeSelf() which is called by
+    /// the function subscribe().
     template<typename ...Subscribers>
     constexpr BusImpl(Subscribers& ...subscribers) {
         subscribe(subscribers...);
     }
-
+    /// The same functionality as variadic constructor above.
     template<typename ...Subscribers>
     constexpr void subscribeAll(Subscribers& ...subscribers) {
         subscribe(subscribers...);
     }
-
+    /// Subscribes one subscriber for given message.
     template<typename Message>
-    void subscribe(Subscriber<Message> &&function) {
-        std::get<Subscribers<Message>>(subscribers).emplace_back(std::move(function));
+    void subscribe(Subscriber<Message> &&subscriber) {
+        std::get<Subscribers<Message>>(subscribers).emplace_back(std::move(subscriber));
     }
-
+    /// Enqueues the message to the message queue.
     template<typename Message>
     void sendMessage(Message &&msg) {
         queue.emplace_back(std::forward<Message>(msg));
     }
-
+    /// Extracts one message from the message queue and executes given subscribers.
     bool processMessage() {
         if (queue.empty()) {
             return false;
@@ -112,24 +114,29 @@ public:
     }
 };
 
+/// Helper message to provide one-shot-request functionality.
+/// When the message is received and processed, the response should called immediately.
+/// This type is primarily used by the BaseRequestor (and derived) class.
 template <typename Message, typename Result>
 struct Request {
     const Message message;
     const std::function<void(Result &&)> response;
 };
 
+/// Base for requests of various types. The object of this class subscribes itself to the message that forms a request
+/// and when the message is received, it processes it (calls the action defined in derived class) and immediately
+/// calls the response callback.
 template <typename Bus, typename Message, typename Result>
 class BaseRequestor {
 public:
-    using RequestT = Request<Message, Result>;
     void subscribeSelf(Bus &bus) {
-        bus. template subscribe<RequestT>(std::bind(&BaseRequestor::onRequest, &*this, std::placeholders::_1));
+        bus. template subscribe<Request<Message, Result>>(std::bind(&BaseRequestor::onRequest, &*this, std::placeholders::_1));
     }
 
 private:
     virtual Result action(const Message &) = 0;
 
-    void onRequest(const RequestT &request) {
+    void onRequest(const Request<Message, Result> &request) {
         request.response(action(request.message));
     }
 };
