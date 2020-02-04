@@ -19,3 +19,7 @@ g++ -pedantic -Wall -Wextra -O3 main.cpp
 ```
 
 (or build a CMake project...)
+
+## TODO
+
+So far, the Bus does not support delayed messages as it requires special queue instead of plain `std::dequeue`.
