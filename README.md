@@ -20,6 +20,13 @@ g++ -pedantic -Wall -Wextra -O3 main.cpp
 
 (or build a CMake project...)
 
+## Measurement
+
+```
+Compile-time bus: 718us
+Run-time bus: 1284us
+```
+
 ## TODO
 
 So far, the Bus does not support delayed messages as it requires special queue instead of plain `std::dequeue`.
