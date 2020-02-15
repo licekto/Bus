@@ -114,6 +114,7 @@ public:
     }
 };
 
+#ifdef REQUESTOR_DEMO
 /// Helper message to provide one-shot-request functionality.
 /// When the message is received and processed, the response should called immediately.
 /// This type is primarily used by the BaseRequestor (and derived) class.
@@ -140,3 +141,4 @@ private:
         request.response(action(request.message));
     }
 };
+#endif
